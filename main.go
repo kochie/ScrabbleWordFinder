@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/kochie/ScrabbleWordFinder/words"
 )
@@ -18,7 +19,7 @@ func main() {
 	for {
 		fmt.Print("Enter text: ")
 		text, _ := reader.ReadString('\n')
-		fmt.Println(words.SearchForAnagram(text, wordTable))
+		fmt.Println(words.SearchForAnagram(strings.ToLower(text), wordTable))
 	}
 
 }

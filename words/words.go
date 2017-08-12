@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -16,9 +17,22 @@ import (
 var primeMap = make(map[rune]int)
 var largestPrime = 1
 
+type byLength []string
+
+func (s byLength) Len() int {
+	return len(s)
+}
+func (s byLength) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s byLength) Less(i, j int) bool {
+	return len(s[i]) < len(s[j])
+}
+
 // SearchForAnagram will return a list of words in the dictionary that can be made from the letters given.
 func SearchForAnagram(letters string, wordTable map[uint64][]string) (possibleWords []string) {
 	grayCode := gray.GenerateGrayCode(len(letters))
+	productMap := make(map[uint64]bool)
 	for _, combo := range grayCode {
 		activeLetters := ""
 		for i, binary := range combo {
@@ -26,8 +40,23 @@ func SearchForAnagram(letters string, wordTable map[uint64][]string) (possibleWo
 				activeLetters += string(letters[i])
 			}
 		}
+
 		product := getWordProduct(activeLetters)
-		possibleWords = append(possibleWords, wordTable[product]...)
+		if _, ok := productMap[product]; !ok {
+			productMap[product] = true
+			possibleWords = append(possibleWords, wordTable[product]...)
+		}
+
+		for i := 0; i < len(possibleWords); i++ {
+			if len(possibleWords[i]) < 3 {
+				possibleWords = remove(possibleWords, i)
+				i--
+				// fmt.Println(tempWords)
+			}
+		}
+
+		sort.Sort(sort.Reverse(byLength(possibleWords)))
+
 	}
 	return
 }
@@ -125,4 +154,8 @@ func handleError(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func remove(s []string, i int) []string {
+	return append(s[:i], s[i+1:]...)
 }
