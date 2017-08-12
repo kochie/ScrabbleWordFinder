@@ -1,42 +1,74 @@
 package words
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
+	"strconv"
 	"strings"
+
+	"github.com/kochie/ScrabbleWordFinder/gray"
+	"gopkg.in/cheggaaa/pb.v2"
 )
 
 var primeMap = make(map[rune]int)
 var largestPrime = 1
 
+// SearchForAnagram will return a list of words in the dictionary that can be made from the letters given.
+func SearchForAnagram(letters string, wordTable map[uint64][]string) (possibleWords []string) {
+	grayCode := gray.GenerateGrayCode(len(letters))
+	for _, combo := range grayCode {
+		activeLetters := ""
+		for i, binary := range combo {
+			if 0 == strings.Compare(string(binary), "1") {
+				activeLetters += string(letters[i])
+			}
+		}
+		product := getWordProduct(activeLetters)
+		possibleWords = append(possibleWords, wordTable[product]...)
+	}
+	return
+}
+
 // WritePrimeMap writes the result of the primeMap at the current time.
 func WritePrimeMap(filename string) {
 	data := ""
 	for runes, prime := range primeMap {
-		fmt.Println(prime)
-		data += string(runes) + " prime: " + string(prime) + "\n"
+		fmt.Println(strconv.Itoa(prime))
+		data += "char: " + string(runes) + " prime: " + strconv.Itoa(prime) + "\n"
 	}
 	ioutil.WriteFile(filename, []byte(data), 0644)
+	fmt.Println(primeMap)
 }
 
 // WriteWordTable will write a wordTable to a file.
-func WriteWordTable(wordTable map[int][]string, filename string) {
-	data := ""
+func WriteWordTable(wordTable map[uint64][]string, filename string) {
+	// data := ""
+	bar := pb.StartNew(len(wordTable))
+	file, err := os.Create(filename)
+	defer file.Close()
+	handleError(err)
+	writer := bufio.NewWriter(file)
 	for product, words := range wordTable {
-		data += string(product) + strings.Join(words, ", ") + "\n"
+		fmt.Fprintln(writer, strconv.FormatUint(product, 10)+" - "+strings.Join(words, ", "))
+		bar.Increment()
 	}
-	ioutil.WriteFile(filename, []byte(data), 0644)
+	bar.Finish()
+	// ioutil.WriteFile(filename, []byte(data), 0644)
 }
 
 // CreateWordTable will create a data object for a list of words.
-func CreateWordTable(wordList []string) (wordTable map[int][]string) {
-	wordTable = make(map[int][]string) // make a mapping of int to list of strings.
-
+func CreateWordTable(wordList []string) (wordTable map[uint64][]string) {
+	wordTable = make(map[uint64][]string) // make a mapping of int to list of strings.
+	bar := pb.StartNew(len(wordList))
 	for _, word := range wordList {
 		product := getWordProduct(word)
 		wordTable[product] = append(wordTable[product], word)
+		bar.Increment()
 	}
+	bar.Finish()
 	return
 }
 
@@ -47,10 +79,10 @@ func ReadWordList(filename string) []string {
 	return strings.Split(string(data), "\n")
 }
 
-func getWordProduct(word string) (product int) {
+func getWordProduct(word string) (product uint64) {
 	product = 1
 	for _, letter := range word {
-		product *= getPrime(letter)
+		product *= uint64(getPrime(letter))
 	}
 	return
 }
@@ -72,6 +104,8 @@ func generatePrime(previousPrime int) (prime int) {
 		i++
 		if testPrimeNumber(i) {
 			prime = i
+			largestPrime = i
+			fmt.Println(largestPrime)
 			break
 		}
 	}
@@ -81,10 +115,10 @@ func generatePrime(previousPrime int) (prime int) {
 func testPrimeNumber(i int) bool {
 	for j := 2; j < i; j++ {
 		if i%j == 0 {
-			return true
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func handleError(err error) {
